@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Boilerplate Template</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        #canvas-div {
+            position: relative;
+            height: 100vh;
+            width: 100vw;
+            background-color: rgb(107, 31, 31);
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: red;
+            pointer-events: none;
+            user-select: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="canvas-div">
+        <div id="crosshair">+</div>
+
+    </div>
+    <script type="module" src="./js/classes/room3D.js"></script>
+</body>
+
+</html>

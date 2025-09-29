@@ -1,0 +1,20 @@
+{
+  "name": "three",
+  "version": "1.0.0",
+  "description": "Boilerplate project with Parcel bundler",
+  "scripts": {
+    "start": "parcel ./src/index.html",
+    "build": "parcel build ./src/index.html"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@parcel/rust": "^2.15.4",
+    "parcel": "^2.15.4"
+  },
+  "dependencies": {
+    "@tweenjs/tween.js": "^25.0.0",
+    "dat.gui": "^0.7.9",
+    "three": "^0.179.1"
+  }
+}
