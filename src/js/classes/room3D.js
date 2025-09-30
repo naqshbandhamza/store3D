@@ -5,7 +5,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 
-const monkeyUrl = new URL("../../assets/glb/store1.glb", import.meta.url);
+const monkeyUrl = new URL("../../assets/glb/room3dd.glb", import.meta.url);
 const studioLightsWorldForest = new URL("../../assets/lights/forest.exr", import.meta.url).href;
 
 class Room3D {
@@ -17,8 +17,6 @@ class Room3D {
         this.mousePos = new THREE.Vector2();
         this.model = null;
         this.playerBB = new THREE.Box3();
-        this.collisionWith = "";
-        this.collisionWithObj = null;
 
         // Movement state
         this.velocity = new THREE.Vector3();
@@ -59,7 +57,6 @@ class Room3D {
         const loader = new EXRLoader();
         loader.load(studioLightsWorldForest, (texture) => {
             texture.mapping = THREE.EquirectangularReflectionMapping;
-            // Apply as scene background
             this.scene.background = texture;
             // Apply as scene environment (for reflections, PBR materials)
             this.scene.environment = texture;
@@ -114,7 +111,7 @@ class Room3D {
 
     loadModel() {
 
-        // Setup DRACO loader
+        // Setup DRACO loader if draco compression used
         const dracoLoader = new DRACOLoader();
         // Use the CDN or host the decoder files locally
         dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
@@ -137,26 +134,25 @@ class Room3D {
 
             model.traverse((child) => {
                 if (child.isMesh) {
-                    console.log("mesh: ", child.name)
                     if (child.name.startsWith("Wall"))
-                    {
                         child.userData.boundingBox = new THREE.Box3().setFromObject(child);
-                        console.log(child)
-                    }
                     child.material.transparent = false;
                     child.material.transmission = 0;
                     child.material.opacity = 1;
+                    console.log("mesh: ", child.name)
                 } else {
-                    console.log("not mesh:", child.name)
-                    if (child.name.startsWith("Wall") && child.isGroup)
-                    {
-                        console.log(child)
-                        child.children.map(c=>{
-                            if(c.isMesh){
+                    if (
+                        (child.name.startsWith("Wall") || child.name.startsWith("Hotspot") || child.name.startsWith("Podium")
+                            || child.name.startsWith("Reception") || child.name.startsWith("Sofa") || child.name.startsWith("Table"))
+                        && child.isGroup) {
+
+                        child.children.map(c => {
+                            if (c.isMesh) {
                                 c.userData.boundingBox = new THREE.Box3().setFromObject(c);
                             }
                         })
                     }
+                    console.log("not mesh:", child.name)
                 }
             });
 
@@ -229,12 +225,8 @@ class Room3D {
 
     RaysCaster() {
         this.rayCaster.setFromCamera(this.mousePos, this.camera)
-        const intersects = this.rayCaster.intersectObjects(this.scene.children);
-        this.collisionWith = "";
-        this.collisionWithObj = null;
-        for (let i = 0; i < intersects.length; i++) {
-            this.collisionWithObj = intersects[i];
-        }
+        //const intersects = this.rayCaster.intersectObjects(this.scene.children);
+        //console.log(intersects)
     }
 
     updateBoundingBoxes() {
@@ -242,6 +234,7 @@ class Room3D {
             this.model.traverse((child) => {
                 if (child.isMesh && child.userData.boundingBox) {
                     child.userData.boundingBox.setFromObject(child);
+                    child.userData.boundingBox.max.y = 10;
                 }
             });
         }
@@ -249,9 +242,10 @@ class Room3D {
 
     updatePlayerBB() {
         if (this.playerBB && this.controls) {
+            // Full Body
             this.playerBB.setFromCenterAndSize(
                 this.controls.object.position,
-                new THREE.Vector3(1, 2, 1) // size of the player
+                new THREE.Vector3(1, 2, 1) // full player height = 2
             );
         }
     }
@@ -273,7 +267,8 @@ class Room3D {
             });
 
             if (collided) {
-                console.log(this.collisionWithObj)
+                //console.log("collision")
+                //console.log(inPlay)
                 // Stop movement (restore old position)
                 this.controls.object.position.copy(oldPosition);
             }
