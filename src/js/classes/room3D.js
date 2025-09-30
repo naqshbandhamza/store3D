@@ -5,7 +5,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 
-const monkeyUrl = new URL("../../assets/glb/croom.glb", import.meta.url);
+const monkeyUrl = new URL("../../assets/glb/store3.glb", import.meta.url);
 const studioLightsWorldForest = new URL("../../assets/lights/forest.exr", import.meta.url).href;
 
 class Room3D {
@@ -137,14 +137,26 @@ class Room3D {
 
             model.traverse((child) => {
                 if (child.isMesh) {
-                    //console.log("mesh: ", child.name)
+                    console.log("mesh: ", child.name)
                     if (child.name.startsWith("Wall"))
+                    {
                         child.userData.boundingBox = new THREE.Box3().setFromObject(child);
+                        console.log(child)
+                    }
                     child.material.transparent = false;
                     child.material.transmission = 0;
                     child.material.opacity = 1;
                 } else {
-                    //console.log("not mesh:", child.name)
+                    console.log("not mesh:", child.name)
+                    if (child.name.startsWith("Wall") && child.isGroup)
+                    {
+                        console.log(child)
+                        child.children.map(c=>{
+                            if(c.isMesh){
+                                c.userData.boundingBox = new THREE.Box3().setFromObject(c);
+                            }
+                        })
+                    }
                 }
             });
 
