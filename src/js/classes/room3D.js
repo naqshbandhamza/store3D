@@ -5,7 +5,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 
-const monkeyUrl = new URL("../../assets/glb/store3.glb", import.meta.url);
+const monkeyUrl = new URL("../../assets/glb/store1.glb", import.meta.url);
 const studioLightsWorldForest = new URL("../../assets/lights/forest.exr", import.meta.url).href;
 
 class Room3D {
