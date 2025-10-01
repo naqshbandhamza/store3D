@@ -30,6 +30,8 @@ class Room3D {
         this.pitch = 0;
         this.lookDelta = { x: 0, y: 0 };
 
+        this._tempBox;
+
         // Movement state
         this.velocity = new THREE.Vector3();
         this.direction = new THREE.Vector3();
@@ -41,12 +43,13 @@ class Room3D {
         this.initCamera();
         this.initControls();
         this.initLights();
-        this.initPlane();
-        //this.initGrid();
         this.initJoystick();
-        this.loadModel(); // Uncomment if you want to load the GLTF
-        this.initSky();
+        this.loadModel();
         this.animate();
+
+        // bind animate so we can pass it to setAnimationLoop once
+        this.animate = this.animate.bind(this);
+        this.renderer.setAnimationLoop(this.animate);
 
         // for head-bob
         this.walkTime = 0;
@@ -161,12 +164,6 @@ class Room3D {
         this.initEnvironment();
     }
 
-    initPlane() {
-    }
-
-    initSky() {
-    }
-
     initGrid() {
         const gridHelper = new THREE.GridHelper(30);
         this.scene.add(gridHelper);
@@ -199,15 +196,19 @@ class Room3D {
 
                 if (child.isMesh) {
                     if (child.name.startsWith("Wall")) {
-                        child.userData.boundingBox = new THREE.Box3().setFromObject(child);
-                        child.userData.boundingBox.max.y = 10;
+
+                        // child.userData.boundingBox = new THREE.Box3().setFromObject(child);
+                        // child.userData.boundingBox.max.y = 10;
+                        if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+                        child.userData.localBoundingBox = child.geometry.boundingBox.clone();
+                        child.userData.boundingBox = new THREE.Box3(); // world-space box
 
                         this.colliders.push(child);
                     }
                     child.material.transparent = false;
                     child.material.transmission = 0;
                     child.material.opacity = 1;
-                    console.log(`mesh: ${child.name} `, child)
+                    //console.log(`mesh: ${child.name} `, child)
                 } else {
                     if (
                         (child.name.startsWith("Wall") || child.name.startsWith("Hotspot") || child.name.startsWith("Podium")
@@ -216,14 +217,18 @@ class Room3D {
 
                         child.children.map(c => {
                             if (c.isMesh) {
-                                c.userData.boundingBox = new THREE.Box3().setFromObject(c);
-                                c.userData.boundingBox.max.y = 10;
+
+                                // c.userData.boundingBox = new THREE.Box3().setFromObject(c);
+                                // c.userData.boundingBox.max.y = 10;
+                                if (!c.geometry.boundingBox) c.geometry.computeBoundingBox();
+                                c.userData.localBoundingBox = c.geometry.boundingBox.clone();
+                                c.userData.boundingBox = new THREE.Box3(); // world-space box
 
                                 this.colliders.push(c);
                             }
                         })
                     }
-                    console.log(`not mesh: ${child.name} `, child)
+                    //console.log(`not mesh: ${child.name} `, child)
                 }
 
             });
@@ -281,13 +286,6 @@ class Room3D {
             }
         });
 
-        //this.container.addEventListener("mousemove", function (e) {
-        //if (this.mousePos) {
-        //this.mousePos.x = (e.clientX / this.container.clientWidth) * 2 - 1;
-        //this.mousePos.y = (e.clientY / this.container.clientHeight) * 2 - 1;
-        //}
-        //})
-
     }
 
     _onKeyDown(event) {
@@ -308,31 +306,32 @@ class Room3D {
         }
     }
 
+
     update(delta) {
         this.direction.z = Number(this.move.forward) - Number(this.move.backward);
         this.direction.x = Number(this.move.right) - Number(this.move.left);
         this.direction.normalize();
 
-        if (this.move.forward || this.move.backward) this.velocity.z -= this.direction.z * 50 * delta;
-        if (this.move.left || this.move.right) this.velocity.x -= this.direction.x * 50 * delta;
+        const speed = 5;
+        const targetVelocityX = this.direction.x * speed;
+        const targetVelocityZ = this.direction.z * speed;
 
-        this.controls.moveRight(-this.velocity.x * delta);
-        this.controls.moveForward(-this.velocity.z * delta);
+        const acceleration = 20;
+        this.velocity.x += (targetVelocityX - this.velocity.x) * Math.min(acceleration * delta, 1);
+        this.velocity.z += (targetVelocityZ - this.velocity.z) * Math.min(acceleration * delta, 1);
 
-        // damping for smooth stop
-        this.velocity.x -= this.velocity.x * 10.0 * delta;
-        this.velocity.z -= this.velocity.z * 10.0 * delta;
+        this.controls.moveRight(this.velocity.x * delta);
+        this.controls.moveForward(this.velocity.z * delta);
 
-        // --- NEW: Head-bob shaky movement ---
-        if (this.move.forward || this.move.backward || this.move.left || this.move.right) {
-            this.walkTime += delta * 10; // step speed factor
-            //
+        if (this.direction.lengthSq() > 0) {
+            this.walkTime += delta * 10;
             this.controls.object.position.y = this.baseHeight + Math.sin(this.walkTime) * 0.1;
         } else {
             this.walkTime = 0;
             this.controls.object.position.y = this.baseHeight;
         }
     }
+
 
     RaysCaster() {
         this.rayCaster.setFromCamera(this.mousePos, this.camera)
@@ -341,15 +340,19 @@ class Room3D {
     }
 
     updateBoundingBoxes() {
-        if (!this.model) return;
-        const tempBox = new THREE.Box3();
-        this.colliders.map((child) => {
-            if (child.isMesh && child.userData.boundingBox) {
-                tempBox.setFromObject(child);
-                child.userData.boundingBox.copy(tempBox);
-                child.userData.boundingBox.max.y = 10; // keep clamp
-            }
-        });
+
+        if (!this.model || this.colliders.length === 0) return;
+        if (!this._tempBox) this._tempBox = new THREE.Box3();
+        
+        for (let i = 0; i < this.colliders.length; i++) {
+            const mesh = this.colliders[i];
+            if (!mesh.userData.localBoundingBox) continue;
+            this._tempBox.copy(mesh.userData.localBoundingBox);
+            this._tempBox.applyMatrix4(mesh.matrixWorld);
+            this._tempBox.max.y = 10;
+            mesh.userData.boundingBox.copy(this._tempBox);
+        }
+
     }
 
     updatePlayerBB() {
@@ -368,19 +371,21 @@ class Room3D {
         let inPlay = null;
 
         if (this.model) {
-            this.colliders.map((child) => {
+            
+            for (let i = 0; i < this.colliders.length; i++) {
+                const child = this.colliders[i];
                 if (child.isMesh && child.userData.boundingBox) {
                     if (this.playerBB.intersectsBox(child.userData.boundingBox)) {
                         collided = true;
                         name = child.name;
                         inPlay = child;
+                        break; // optional: stop checking further if a collision is found
                     }
                 }
-            });
+            }
+
 
             if (collided) {
-                //console.log("collision")
-                //console.log(inPlay)
                 // Stop movement (restore old position)
                 this.controls.object.position.copy(oldPosition);
             }
@@ -389,7 +394,6 @@ class Room3D {
 
     animate() {
         //if (this.mixer) this.mixer.update(this.clock.getDelta());
-        // const oldPosition = this.controls.object.position.clone();
 
         if (this.oldPosition)
             this.oldPosition.copy(this.controls.object.position);
@@ -403,7 +407,7 @@ class Room3D {
         this.checkCollisions(this.oldPosition);
 
         this.renderer.render(this.scene, this.camera);
-        this.renderer.setAnimationLoop(() => this.animate());
+        // this.renderer.setAnimationLoop(() => this.animate());
     }
 
     onWindowResize() {
