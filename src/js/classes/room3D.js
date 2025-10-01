@@ -7,7 +7,7 @@ import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 import nipplejs from "nipplejs";
 
 
-const monkeyUrl = new URL("../../assets/glb/room3dd.glb", import.meta.url);
+const monkeyUrl = new URL("../../assets/glb/roomop1.glb", import.meta.url);
 const studioLightsWorldForest = new URL("../../assets/lights/forest.exr", import.meta.url).href;
 
 class Room3D {
@@ -138,8 +138,8 @@ class Room3D {
 
     initScene() {
         this.scene = new THREE.Scene();
-        const axesHelper = new THREE.AxesHelper(5);
-        this.scene.add(axesHelper);
+        //const axesHelper = new THREE.AxesHelper(5);
+        //this.scene.add(axesHelper);
     }
 
     initCamera() {
