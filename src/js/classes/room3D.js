@@ -85,7 +85,7 @@ class Room3D {
     }
 
     updateCameraLook() {
-        const sensitivity = 0.05; // adjust like mouse sensitivity
+        const sensitivity = 0.1; // adjust like mouse sensitivity
         const smoothing = 0.15;   // smaller = more lag/smooth
 
         // interpolate joystick effect for smoothness
@@ -340,17 +340,6 @@ class Room3D {
         console.log(intersects)
     }
 
-    // updateBoundingBoxes() {
-    //     if (this.model) {
-    //         this.colliders.map((child) => {
-    //             if (child.isMesh && child.userData.boundingBox) {
-    //                 child.userData.boundingBox.setFromObject(child);
-    //                 child.userData.boundingBox.max.y = 10;
-    //             }
-    //         });
-    //     }
-    // }
-
     updateBoundingBoxes() {
         if (!this.model) return;
         const tempBox = new THREE.Box3();
@@ -362,7 +351,6 @@ class Room3D {
             }
         });
     }
-
 
     updatePlayerBB() {
         if (this.playerBB && this.controls) {
