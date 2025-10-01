@@ -4,6 +4,8 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
+import nipplejs from "nipplejs";
+
 
 const monkeyUrl = new URL("../../assets/glb/room3dd.glb", import.meta.url);
 const studioLightsWorldForest = new URL("../../assets/lights/forest.exr", import.meta.url).href;
@@ -17,6 +19,14 @@ class Room3D {
         this.mousePos = new THREE.Vector2();
         this.model = null;
         this.playerBB = new THREE.Box3();
+        this.playerBBSize = new THREE.Vector3(1, 2, 1); // define once
+        this.oldPosition = new THREE.Vector3();
+        this.colliders = [];
+
+        // joystick controls
+        this.yaw = 0;
+        this.pitch = 0;
+        this.lookDelta = { x: 0, y: 0 };
 
         // Movement state
         this.velocity = new THREE.Vector3();
@@ -31,6 +41,7 @@ class Room3D {
         this.initLights();
         this.initPlane();
         //this.initGrid();
+        this.initJoystick();
         this.loadModel(); // Uncomment if you want to load the GLTF
         this.initSky();
         this.animate();
@@ -40,6 +51,7 @@ class Room3D {
         this.baseHeight = 5;
 
         this._initEvents();
+        this._initTouchControls();
 
         window.addEventListener("resize", () => this.onWindowResize());
     }
@@ -68,6 +80,55 @@ class Room3D {
         //     this.scene.background = texture;
         //     this.scene.environment = texture;
         // });
+    }
+
+    updateCameraLook() {
+        const sensitivity = 0.05; // adjust like mouse sensitivity
+        const smoothing = 0.15;   // smaller = more lag/smooth
+
+        // interpolate joystick effect for smoothness
+        this.yaw -= this.lookDelta.x * sensitivity * smoothing;
+        this.pitch += this.lookDelta.y * sensitivity * smoothing;
+
+        // clamp pitch to avoid flipping
+        this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
+
+        // apply to camera
+        this.camera.rotation.order = "YXZ";
+        this.camera.rotation.y = this.yaw;
+        this.camera.rotation.x = this.pitch;
+    }
+
+    initJoystick() {
+        const joystick = nipplejs.create({
+            zone: document.getElementById("joystick"),
+            mode: "static",
+            position: { left: "50%", top: "50%" },
+            color: "white",
+            size: 100
+        });
+
+        joystick.on("move", (evt, data) => {
+            if (!data.direction) {
+                // stop influence when joystick is released
+                this.lookDelta.x = 0;
+                this.lookDelta.y = 0;
+                return;
+            }
+
+            // instead of setting absolute rotation, store joystick force
+            const force = data.distance / 100; // normalize 0–1
+            this.lookDelta.x = Math.cos(data.angle.radian) * force;
+            this.lookDelta.y = Math.sin(data.angle.radian) * force;
+        });
+
+
+        joystick.on("end", () => {
+            // reset look influence (stop rotating when released)
+            this.lookDelta.x = 0;
+            this.lookDelta.y = 0;
+        });
+
     }
 
     initScene() {
@@ -133,13 +194,18 @@ class Room3D {
             // });
 
             model.traverse((child) => {
+
                 if (child.isMesh) {
-                    if (child.name.startsWith("Wall"))
+                    if (child.name.startsWith("Wall")) {
                         child.userData.boundingBox = new THREE.Box3().setFromObject(child);
+                        child.userData.boundingBox.max.y = 10;
+
+                        this.colliders.push(child);
+                    }
                     child.material.transparent = false;
                     child.material.transmission = 0;
                     child.material.opacity = 1;
-                    console.log("mesh: ", child.name)
+                    console.log(`mesh: ${child.name} `, child)
                 } else {
                     if (
                         (child.name.startsWith("Wall") || child.name.startsWith("Hotspot") || child.name.startsWith("Podium")
@@ -149,11 +215,15 @@ class Room3D {
                         child.children.map(c => {
                             if (c.isMesh) {
                                 c.userData.boundingBox = new THREE.Box3().setFromObject(c);
+                                c.userData.boundingBox.max.y = 10;
+
+                                this.colliders.push(c);
                             }
                         })
                     }
-                    console.log("not mesh:", child.name)
+                    console.log(`not mesh: ${child.name} `, child)
                 }
+
             });
 
         }, undefined, (error) => {
@@ -161,21 +231,46 @@ class Room3D {
         });
     }
 
+    _initTouchControls() {
+        const map = {
+            "up": "forward",
+            "down": "backward",
+            "left": "left",
+            "right": "right"
+        };
+
+        Object.entries(map).forEach(([id, dir]) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            const press = () => this.move[dir] = true;
+            const release = () => this.move[dir] = false;
+
+            el.addEventListener("touchstart", press);
+            el.addEventListener("mousedown", press);
+
+            el.addEventListener("touchend", release);
+            el.addEventListener("mouseup", release);
+            el.addEventListener("mouseleave", release);
+        });
+    }
+
+
     _initEvents() {
         document.addEventListener("keydown", (e) => this._onKeyDown(e));
         document.addEventListener("keyup", (e) => this._onKeyUp(e));
 
         // click to lock pointer
         document.body.addEventListener("click", () => {
-            this.controls.lock();
+            //this.controls.lock();
         });
 
-        this.container.addEventListener("mousemove", function (e) {
-            if (this.mousePos) {
-                this.mousePos.x = (e.clientX / this.container.clientWidth) * 2 - 1;
-                this.mousePos.y = (e.clientY / this.container.clientHeight) * 2 - 1;
-            }
-        })
+        //this.container.addEventListener("mousemove", function (e) {
+        //if (this.mousePos) {
+        //this.mousePos.x = (e.clientX / this.container.clientWidth) * 2 - 1;
+        //this.mousePos.y = (e.clientY / this.container.clientHeight) * 2 - 1;
+        //}
+        //})
 
     }
 
@@ -225,27 +320,40 @@ class Room3D {
 
     RaysCaster() {
         this.rayCaster.setFromCamera(this.mousePos, this.camera)
-        //const intersects = this.rayCaster.intersectObjects(this.scene.children);
-        //console.log(intersects)
+        const intersects = this.rayCaster.intersectObjects(this.scene.children);
+        console.log(intersects)
     }
 
+    // updateBoundingBoxes() {
+    //     if (this.model) {
+    //         this.colliders.map((child) => {
+    //             if (child.isMesh && child.userData.boundingBox) {
+    //                 child.userData.boundingBox.setFromObject(child);
+    //                 child.userData.boundingBox.max.y = 10;
+    //             }
+    //         });
+    //     }
+    // }
+
     updateBoundingBoxes() {
-        if (this.model) {
-            this.model.traverse((child) => {
-                if (child.isMesh && child.userData.boundingBox) {
-                    child.userData.boundingBox.setFromObject(child);
-                    child.userData.boundingBox.max.y = 10;
-                }
-            });
-        }
+        if (!this.model) return;
+        const tempBox = new THREE.Box3();
+        this.colliders.map((child) => {
+            if (child.isMesh && child.userData.boundingBox) {
+                tempBox.setFromObject(child);
+                child.userData.boundingBox.copy(tempBox);
+                child.userData.boundingBox.max.y = 10; // keep clamp
+            }
+        });
     }
+
 
     updatePlayerBB() {
         if (this.playerBB && this.controls) {
             // Full Body
             this.playerBB.setFromCenterAndSize(
                 this.controls.object.position,
-                new THREE.Vector3(1, 2, 1) // full player height = 2
+                this.playerBBSize
             );
         }
     }
@@ -256,7 +364,7 @@ class Room3D {
         let inPlay = null;
 
         if (this.model) {
-            this.model.traverse((child) => {
+            this.colliders.map((child) => {
                 if (child.isMesh && child.userData.boundingBox) {
                     if (this.playerBB.intersectsBox(child.userData.boundingBox)) {
                         collided = true;
@@ -276,19 +384,18 @@ class Room3D {
     }
 
     animate() {
-        if (this.mixer) this.mixer.update(this.clock.getDelta());
+        //if (this.mixer) this.mixer.update(this.clock.getDelta());
+        // const oldPosition = this.controls.object.position.clone();
 
-        const oldPosition = this.controls.object.position.clone();
+        if (this.oldPosition)
+            this.oldPosition.copy(this.controls.object.position);
 
+        this.updateCameraLook();
         this.update(this.clock.getDelta());
-
         this.updatePlayerBB();
-
-        this.updateBoundingBoxes()
-
-        this.RaysCaster();
-
-        this.checkCollisions(oldPosition);
+        this.updateBoundingBoxes();
+        //this.RaysCaster();
+        this.checkCollisions(this.oldPosition);
 
         this.renderer.render(this.scene, this.camera);
         this.renderer.setAnimationLoop(() => this.animate());

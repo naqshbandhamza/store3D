@@ -15,6 +15,7 @@
   "dependencies": {
     "@tweenjs/tween.js": "^25.0.0",
     "dat.gui": "^0.7.9",
+    "nipplejs": "^0.10.2",
     "three": "^0.179.1"
   }
 }

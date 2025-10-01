@@ -28,13 +28,59 @@
             pointer-events: none;
             user-select: none;
         }
+
+        #joystick {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            width: 120px;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            touch-action: none;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 40px;
+            right: 200px;
+            display: grid;
+            grid-template-columns: 60px 60px 60px;
+            grid-template-rows: 60px 60px;
+            gap: 10px;
+            user-select: none;
+        }
+
+        .btn {
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 24px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+
+        .empty {
+            visibility: hidden;
+        }
     </style>
 </head>
 
 <body>
     <div id="canvas-div">
         <div id="crosshair">+</div>
+        <div id="joystick"></div>
+        <div class="controls">
+            <div class="empty"></div>
+            <div class="btn" id="up">↑</div>
+            <div class="empty"></div>
 
+            <div class="btn" id="left">←</div>
+            <div class="btn" id="down">↓</div>
+            <div class="btn" id="right">→</div>
+        </div>
     </div>
     <script type="module" src="./js/classes/room3D.js"></script>
 </body>
