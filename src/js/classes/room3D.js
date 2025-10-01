@@ -23,6 +23,8 @@ class Room3D {
         this.oldPosition = new THREE.Vector3();
         this.colliders = [];
 
+        this.controlMode = "joystick"; // "joystick" or "pointer"
+
         // joystick controls
         this.yaw = 0;
         this.pitch = 0;
@@ -261,8 +263,22 @@ class Room3D {
         document.addEventListener("keyup", (e) => this._onKeyUp(e));
 
         // click to lock pointer
-        document.body.addEventListener("click", () => {
-            //this.controls.lock();
+        document.body.addEventListener("keydown", (e) => {
+            if (e.code === "KeyP") {
+                if (this.controlMode === "joystick") {
+                    this.controlMode = "pointer";
+                    this.controls.lock();
+                } else {
+                    this.controlMode = "joystick";
+                    this.controls.unlock();
+
+                    // Sync yaw/pitch from camera orientation
+                    const euler = new THREE.Euler().setFromQuaternion(this.camera.quaternion, "YXZ");
+                    this.yaw = euler.y;
+                    this.pitch = euler.x;
+                }
+                console.log("Control mode:", this.controlMode);
+            }
         });
 
         //this.container.addEventListener("mousemove", function (e) {
@@ -390,7 +406,8 @@ class Room3D {
         if (this.oldPosition)
             this.oldPosition.copy(this.controls.object.position);
 
-        this.updateCameraLook();
+        if (this.controlMode === "joystick")
+            this.updateCameraLook();
         this.update(this.clock.getDelta());
         this.updatePlayerBB();
         this.updateBoundingBoxes();
