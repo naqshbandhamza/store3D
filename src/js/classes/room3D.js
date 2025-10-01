@@ -310,7 +310,9 @@ class Room3D {
     update(delta) {
         this.direction.z = Number(this.move.forward) - Number(this.move.backward);
         this.direction.x = Number(this.move.right) - Number(this.move.left);
-        this.direction.normalize();
+        const moving = this.direction.lengthSq() > 0;
+
+        if (moving) this.direction.normalize();
 
         const speed = 5;
         const targetVelocityX = this.direction.x * speed;
@@ -323,7 +325,7 @@ class Room3D {
         this.controls.moveRight(this.velocity.x * delta);
         this.controls.moveForward(this.velocity.z * delta);
 
-        if (this.direction.lengthSq() > 0) {
+        if (moving) {
             this.walkTime += delta * 10;
             this.controls.object.position.y = this.baseHeight + Math.sin(this.walkTime) * 0.1;
         } else {
@@ -343,7 +345,7 @@ class Room3D {
 
         if (!this.model || this.colliders.length === 0) return;
         if (!this._tempBox) this._tempBox = new THREE.Box3();
-        
+
         for (let i = 0; i < this.colliders.length; i++) {
             const mesh = this.colliders[i];
             if (!mesh.userData.localBoundingBox) continue;
@@ -371,7 +373,7 @@ class Room3D {
         let inPlay = null;
 
         if (this.model) {
-            
+
             for (let i = 0; i < this.colliders.length; i++) {
                 const child = this.colliders[i];
                 if (child.isMesh && child.userData.boundingBox) {
