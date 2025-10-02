@@ -6,7 +6,6 @@ import { PointerLockControls } from "three/examples/jsm/controls/PointerLockCont
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 import nipplejs from "nipplejs";
 
-
 const monkeyUrl = new URL("../../assets/glb/roomop1.glb", import.meta.url);
 const studioLightsWorldForest = new URL("../../assets/lights/forest.exr", import.meta.url).href;
 
@@ -19,10 +18,9 @@ class Room3D {
         this.mousePos = new THREE.Vector2();
         this.model = null;
         this.playerBB = new THREE.Box3();
-        this.playerBBSize = new THREE.Vector3(1, 2, 1); // define once
+        this.playerBBSize = new THREE.Vector3(0.6, 1.8, 0.6);
         this.oldPosition = new THREE.Vector3();
         this.colliders = [];
-
         this.controlMode = "joystick"; // "joystick" or "pointer"
 
         // joystick controls
@@ -53,7 +51,7 @@ class Room3D {
 
         // for head-bob
         this.walkTime = 0;
-        this.baseHeight = 5;
+        this.baseHeight = 1.7;
 
         this._initEvents();
         this._initTouchControls();
@@ -70,21 +68,12 @@ class Room3D {
     }
 
     initEnvironment() {
-        // Example using EXR
         const loader = new EXRLoader();
         loader.load(studioLightsWorldForest, (texture) => {
             texture.mapping = THREE.EquirectangularReflectionMapping;
             this.scene.background = texture;
-            // Apply as scene environment (for reflections, PBR materials)
             this.scene.environment = texture;
         });
-
-        // Example using HDR instead:
-        // new RGBELoader().load('/textures/forest.hdr', (texture) => {
-        //     texture.mapping = THREE.EquirectangularReflectionMapping;
-        //     this.scene.background = texture;
-        //     this.scene.environment = texture;
-        // });
     }
 
     updateCameraLook() {
@@ -144,7 +133,7 @@ class Room3D {
 
     initCamera() {
         this.camera = new THREE.PerspectiveCamera(
-            45,
+            70,
             this.container.clientWidth / this.container.clientHeight,
             0.1,
             1000
@@ -184,8 +173,7 @@ class Room3D {
             this.model = model;
             this.scene.add(model);
             model.position.set(0, 0, 0);
-            model.scale.set(2, 2, 2); // doubles the size
-
+        
             // this.mixer = new THREE.AnimationMixer(model);
             // gltf.animations.forEach((clip) => {
             //     const action = this.mixer.clipAction(clip);
@@ -197,8 +185,6 @@ class Room3D {
                 if (child.isMesh) {
                     if (child.name.startsWith("Wall")) {
 
-                        // child.userData.boundingBox = new THREE.Box3().setFromObject(child);
-                        // child.userData.boundingBox.max.y = 10;
                         if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
                         child.userData.localBoundingBox = child.geometry.boundingBox.clone();
                         child.userData.boundingBox = new THREE.Box3(); // world-space box
@@ -208,7 +194,7 @@ class Room3D {
                     child.material.transparent = false;
                     child.material.transmission = 0;
                     child.material.opacity = 1;
-                    //console.log(`mesh: ${child.name} `, child)
+                   
                 } else {
                     if (
                         (child.name.startsWith("Wall") || child.name.startsWith("Hotspot") || child.name.startsWith("Podium")
@@ -218,8 +204,6 @@ class Room3D {
                         child.children.map(c => {
                             if (c.isMesh) {
 
-                                // c.userData.boundingBox = new THREE.Box3().setFromObject(c);
-                                // c.userData.boundingBox.max.y = 10;
                                 if (!c.geometry.boundingBox) c.geometry.computeBoundingBox();
                                 c.userData.localBoundingBox = c.geometry.boundingBox.clone();
                                 c.userData.boundingBox = new THREE.Box3(); // world-space box
@@ -228,7 +212,7 @@ class Room3D {
                             }
                         })
                     }
-                    //console.log(`not mesh: ${child.name} `, child)
+                    
                 }
 
             });
@@ -261,7 +245,6 @@ class Room3D {
             el.addEventListener("mouseleave", release);
         });
     }
-
 
     _initEvents() {
         document.addEventListener("keydown", (e) => this._onKeyDown(e));
@@ -306,7 +289,6 @@ class Room3D {
         }
     }
 
-
     update(delta) {
         this.direction.z = Number(this.move.forward) - Number(this.move.backward);
         this.direction.x = Number(this.move.right) - Number(this.move.left);
@@ -314,11 +296,11 @@ class Room3D {
 
         if (moving) this.direction.normalize();
 
-        const speed = 5;
+        const speed = 2;
         const targetVelocityX = this.direction.x * speed;
         const targetVelocityZ = this.direction.z * speed;
 
-        const acceleration = 20;
+        const acceleration = 10;
         this.velocity.x += (targetVelocityX - this.velocity.x) * Math.min(acceleration * delta, 1);
         this.velocity.z += (targetVelocityZ - this.velocity.z) * Math.min(acceleration * delta, 1);
 
@@ -327,13 +309,12 @@ class Room3D {
 
         if (moving) {
             this.walkTime += delta * 10;
-            this.controls.object.position.y = this.baseHeight + Math.sin(this.walkTime) * 0.1;
+            this.controls.object.position.y = this.baseHeight + Math.sin(this.walkTime) * 0.025;
         } else {
             this.walkTime = 0;
             this.controls.object.position.y = this.baseHeight;
         }
     }
-
 
     RaysCaster() {
         this.rayCaster.setFromCamera(this.mousePos, this.camera)
