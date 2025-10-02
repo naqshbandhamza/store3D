@@ -6,7 +6,7 @@ import { PointerLockControls } from "three/examples/jsm/controls/PointerLockCont
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 import nipplejs from "nipplejs";
 
-const monkeyUrl = new URL("../../assets/glb/roomop1.glb", import.meta.url);
+const monkeyUrl = new URL("../../assets/glb/store_anim.glb", import.meta.url);
 const studioLightsWorldForest = new URL("../../assets/lights/forest.exr", import.meta.url).href;
 
 class Room3D {
@@ -22,6 +22,7 @@ class Room3D {
         this.oldPosition = new THREE.Vector3();
         this.colliders = [];
         this.controlMode = "joystick"; // "joystick" or "pointer"
+        this.mixer = null;
 
         // joystick controls
         this.yaw = 0;
@@ -173,12 +174,21 @@ class Room3D {
             this.model = model;
             this.scene.add(model);
             model.position.set(0, 0, 0);
-        
-            // this.mixer = new THREE.AnimationMixer(model);
-            // gltf.animations.forEach((clip) => {
-            //     const action = this.mixer.clipAction(clip);
-            //     action.play();
-            // });
+
+            // Compute bounding box of the model
+            const box = new THREE.Box3().setFromObject(model);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            center.z += 1;
+
+            // Place camera at the center, slightly above ground
+            this.camera.position.copy(center);
+
+            this.mixer = new THREE.AnimationMixer(model);
+            gltf.animations.forEach((clip) => {
+                const action = this.mixer.clipAction(clip);
+                action.play();
+            });
 
             model.traverse((child) => {
 
@@ -194,10 +204,10 @@ class Room3D {
                     child.material.transparent = false;
                     child.material.transmission = 0;
                     child.material.opacity = 1;
-                   
+
                 } else {
                     if (
-                        (child.name.startsWith("Wall") || child.name.startsWith("Hotspot") || child.name.startsWith("Podium")
+                        (child.name.startsWith("Wall") || child.name.startsWith("Hotspot") || child.name.includes("Podium")
                             || child.name.startsWith("Reception") || child.name.startsWith("Sofa") || child.name.startsWith("Table"))
                         && child.isGroup) {
 
@@ -212,7 +222,7 @@ class Room3D {
                             }
                         })
                     }
-                    
+
                 }
 
             });
@@ -376,22 +386,32 @@ class Room3D {
     }
 
     animate() {
-        //if (this.mixer) this.mixer.update(this.clock.getDelta());
+        const delta = this.clock.getDelta();
 
-        if (this.oldPosition)
-            this.oldPosition.copy(this.controls.object.position);
+        // Step 1: animations (floating clothes etc.)
+        if (this.mixer) this.mixer.update(delta);
 
-        if (this.controlMode === "joystick")
+        // Step 2: store old position BEFORE movement
+        if (!this.oldPosition) this.oldPosition = new THREE.Vector3();
+        this.oldPosition.copy(this.controls.object.position);
+
+        // Step 3: apply player updates
+        if (this.controlMode === "joystick") {
             this.updateCameraLook();
-        this.update(this.clock.getDelta());
+        }
+        this.update(delta);
+
+        // Step 4: update bounding boxes
         this.updatePlayerBB();
         this.updateBoundingBoxes();
-        //this.RaysCaster();
+
+        // Step 5: check collisions (restore if needed)
         this.checkCollisions(this.oldPosition);
 
+        // Step 6: render
         this.renderer.render(this.scene, this.camera);
-        // this.renderer.setAnimationLoop(() => this.animate());
     }
+
 
     onWindowResize() {
         this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
