@@ -62,6 +62,7 @@ class Room3D {
 
     initRenderer() {
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
+
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         this.renderer.setClearColor(0xffffff, 1);
         this.renderer.shadowMap.enabled = true;
@@ -201,9 +202,6 @@ class Room3D {
 
                         this.colliders.push(child);
                     }
-                    child.material.transparent = false;
-                    child.material.transmission = 0;
-                    child.material.opacity = 1;
 
                 } else {
                     if (
