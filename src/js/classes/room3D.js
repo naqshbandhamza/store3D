@@ -7,7 +7,7 @@ import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 import nipplejs from "nipplejs";
 
 const monkeyUrl = new URL("../../assets/glb/store_anim.glb", import.meta.url);
-const studioLightsWorldForest = new URL("../../assets/lights/forest.exr", import.meta.url).href;
+const studioLightsWorldForest = new URL("../../assets/lights/city.exr", import.meta.url).href;
 
 class Room3D {
     constructor(container = document.body) {
@@ -66,6 +66,13 @@ class Room3D {
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         this.renderer.setClearColor(0xffffff, 1);
         this.renderer.shadowMap.enabled = true;
+
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.outputEncoding = THREE.sRGBEncoding;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.0;
+        this.renderer.physicallyCorrectLights = true;
+
         this.container.appendChild(this.renderer.domElement);
     }
 
@@ -113,7 +120,7 @@ class Room3D {
             }
 
             // instead of setting absolute rotation, store joystick force
-            const force = data.distance / 100; // normalize 0–1
+            const force = data.distance / 40; // normalize 0–1
             this.lookDelta.x = Math.cos(data.angle.radian) * force;
             this.lookDelta.y = Math.sin(data.angle.radian) * force;
         });
@@ -153,6 +160,12 @@ class Room3D {
 
     initLights() {
         this.initEnvironment();
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+        dirLight.position.set(10, 15, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(2048, 2048);
+        this.scene.add(dirLight);
     }
 
     initGrid() {
@@ -203,6 +216,9 @@ class Room3D {
                         this.colliders.push(child);
                     }
 
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
                 } else {
                     if (
                         (child.name.startsWith("Wall") || child.name.startsWith("Hotspot") || child.name.includes("Podium")
@@ -217,6 +233,9 @@ class Room3D {
                                 c.userData.boundingBox = new THREE.Box3(); // world-space box
 
                                 this.colliders.push(c);
+
+                                c.castShadow = true;
+                                c.receiveShadow = true;
                             }
                         })
                     }
