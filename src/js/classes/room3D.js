@@ -260,7 +260,7 @@ class Room3D {
 
         // click to lock pointer
         document.body.addEventListener("keydown", (e) => {
-            if (e.code === "KeyP") {
+            if (e.code === "KeyP" && false) {
                 if (this.controlMode === "joystick") {
                     this.controlMode = "pointer";
                     this.controls.lock();
@@ -275,6 +275,43 @@ class Room3D {
                 }
                 console.log("Control mode:", this.controlMode);
             }
+        });
+
+
+        //
+        let isDragging = false;
+        let lastX = 0, lastY = 0;
+
+        this.renderer.domElement.addEventListener("mousedown", (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+        });
+
+        this.renderer.domElement.addEventListener("mouseup", () => {
+            isDragging = false;
+            this.lookDelta.x = 0;
+            this.lookDelta.y = 0;
+        });
+
+        this.renderer.domElement.addEventListener("mousemove", (e) => {
+            if (!isDragging) return;
+
+            const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
+            lastX = e.clientX;
+            lastY = e.clientY;
+
+            // scale like joystick (tweak sensitivity)
+            const sensitivity = 0.2
+            this.lookDelta.x = 1 * (dx * sensitivity);
+            this.lookDelta.y = -1 * (dy * sensitivity);
+        });
+
+        this.renderer.domElement.addEventListener("mouseleave", () => {
+            isDragging = false;
+            this.lookDelta.x = 0;
+            this.lookDelta.y = 0;
         });
 
     }
@@ -304,7 +341,7 @@ class Room3D {
 
         if (moving) this.direction.normalize();
 
-        const speed = 2;
+        const speed = 2.8;
         const targetVelocityX = this.direction.x * speed;
         const targetVelocityZ = this.direction.z * speed;
 
@@ -315,13 +352,14 @@ class Room3D {
         this.controls.moveRight(this.velocity.x * delta);
         this.controls.moveForward(this.velocity.z * delta);
 
-        if (moving) {
-            this.walkTime += delta * 10;
-            this.controls.object.position.y = this.baseHeight + Math.sin(this.walkTime) * 0.025;
-        } else {
-            this.walkTime = 0;
-            this.controls.object.position.y = this.baseHeight;
-        }
+        //Head Bob
+        // if (moving) {
+        //     this.walkTime += delta * 10;
+        //     this.controls.object.position.y = this.baseHeight + Math.sin(this.walkTime) * 0.025;
+        // } else {
+        //     this.walkTime = 0;
+        //     this.controls.object.position.y = this.baseHeight;
+        // }
     }
 
     RaysCaster() {
@@ -409,7 +447,6 @@ class Room3D {
         // Step 6: render
         this.renderer.render(this.scene, this.camera);
     }
-
 
     onWindowResize() {
         this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
