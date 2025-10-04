@@ -161,11 +161,11 @@ class Room3D {
     initLights() {
         this.initEnvironment();
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-        dirLight.position.set(10, 15, 10);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.set(2048, 2048);
-        this.scene.add(dirLight);
+        // const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+        // dirLight.position.set(10, 15, 10);
+        // dirLight.castShadow = true;
+        // dirLight.shadow.mapSize.set(2048, 2048);
+        // this.scene.add(dirLight);
     }
 
     initGrid() {
