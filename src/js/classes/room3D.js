@@ -7,7 +7,7 @@ import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 import nipplejs from "nipplejs";
 
 const monkeyUrl = new URL("../../assets/glb/store_anim.glb", import.meta.url);
-const studioLightsWorldForest = new URL("../../assets/lights/city.exr", import.meta.url).href;
+const studioLightsWorldForest = new URL("../../assets/lights/Room_hdri.exr", import.meta.url).href;
 
 class Room3D {
     constructor(container = document.body) {
